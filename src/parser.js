@@ -5,6 +5,19 @@ function Parser(run) {
     this.run = run;
 }
 exports.Parser = Parser;
+exports.curry = function (fn, ctx) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    return function () {
+        var args2 = args.concat(Array.prototype.slice.call(arguments, 0));
+        if (args2.length >= fn.length) {
+            return fn.apply(ctx || null, args2);
+        }
+        else {
+            args2.unshift(fn, ctx);
+            return exports.curry.apply(null, args2);
+        }
+    };
+};
 // FUNCTOR
 // Apply a function to any value parsed.
 // (fmap)
@@ -17,12 +30,34 @@ Parser.prototype.map = function (fn) {
 Parser.prototype.cons = function (val) {
     return this.map(function (_) { return val; });
 };
-// MONAD
+// APPLICATIVE
 // Inject a value into the parser.
 // (return)
 exports.pure = function (val) {
     return new Parser(function (input) { return [[val, input]]; });
 };
+// Sequential application.
+// (<*>)
+Parser.prototype.seq = function (parser) {
+    var _this = this;
+    return new Parser(function (input) { return [].concat.apply([], _this.run(input).map(function (val) { return parser.map(val[0]).run(val[1]); })); });
+};
+// Sequence actions, discarding the value of the second argument.
+// (<*)
+Parser.prototype.lseq = function (parser) {
+    return exports.liftA2(function (x, _) { return x; }, this, parser);
+};
+// Sequence actions, discarding the value of the first argument.
+// (*>)
+Parser.prototype.rseq = function (parser) {
+    return this.cons(function (x) { return x; }).seq(parser);
+};
+// Lift a binary function to actions.
+// (liftA2)
+exports.liftA2 = function (fn, a, b) {
+    return a.map(function (x) { return (function (y) { return fn(x, y); }); }).seq(b);
+};
+// MONAD
 // Sequentially compose two parsers, passing any value produced
 // by the first as an argument to the second.
 // (>>=)
