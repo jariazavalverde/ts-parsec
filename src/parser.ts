@@ -20,19 +20,6 @@ export function Parser<A, B>(run: (input: string) => Array<[A, string]>) {
 	this.run = run;
 }
 
-export const curry = function(fn, ctx?) {
-	var args = Array.prototype.slice.call(arguments, 2);
-	return function() {
-		var args2 = args.concat(Array.prototype.slice.call(arguments, 0));
-		if(args2.length >= fn.length) {
-			return fn.apply(ctx || null, args2);
-		} else {
-			args2.unshift(fn, ctx);
-			return curry.apply(null, args2);
-		}
-	};
-}
-
 
 
 // FUNCTOR
@@ -55,7 +42,7 @@ Parser.prototype.cons = function<A, B>(val: B): Parser<B> {
 
 // Inject a value into the parser.
 // (return)
-export const pure = function<A>(val: A): Parser<A> {
+Parser.pure = function<A>(val: A): Parser<A> {
 	return new Parser(input => [[val, input]]);
 };
 
@@ -114,7 +101,7 @@ Parser.prototype.then = function<A, B>(parser: Parser<B>): Parser<B> {
 
 // The identity of Parser.prototype.or.
 // (empty)
-export const empty = function(): Parser<[]> {
+Parser.empty = function(): Parser<[]> {
 	return new Parser(_ => []);
 };
 
@@ -162,4 +149,38 @@ Parser.prototype.many = function<A>(): Parser<A[]> {
 		}
 		return val;
 	});
+};
+
+
+
+// UTILS
+Parser.utils = {
+
+	// Currying a function.
+	// (curry)
+	curry: function(fn, ctx?) {
+		var args = Array.prototype.slice.call(arguments, 2);
+		return function() {
+			var args2 = args.concat(Array.prototype.slice.call(arguments, 0));
+			if(args2.length >= fn.length) {
+				return fn.apply(ctx || null, args2);
+			} else {
+				args2.unshift(fn, ctx);
+				return Parser.utils.curry.apply(null, args2);
+			}
+		};
+	},
+
+	// Identity function.
+	// (id)
+	id: function <A>(val: A): A {
+		return val;
+	},
+
+	// Function composition.
+	// (.)
+	compose: function <A, B, C>(f: (b: B) => C): ((g: (a: A) => B) => ((a: A) => C)) {
+		return g => x => f(g(x));
+	}
+
 };

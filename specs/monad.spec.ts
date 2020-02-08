@@ -1,14 +1,13 @@
 import * as fc from "fast-check";
-import {Parser, pure} from "../src/parser";
+import {Parser} from "../src/parser";
+const {pure} = Parser;
 
 
 
 // Code under test
-
 function take(n: number): Parser<string> {
 	return new Parser(input => input.length >= n ? [[input.substr(0, n), input.substr(n)]] : []);
 }
-
 const char: Parser<string> = take(1);
 const even = (val: string): Parser<string> => val.charCodeAt(0) % 2 == 0 ? take(1) : take(2);
 const odd = (val: string): Parser<string> => val.charCodeAt(0) % 2 == 1 ? take(1) : take(2);

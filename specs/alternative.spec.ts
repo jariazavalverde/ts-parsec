@@ -1,5 +1,6 @@
 import * as fc from "fast-check";
-import {Parser, pure} from "../src/parser";
+import {Parser} from "../src/parser";
+const {pure} = Parser;
 
 
 

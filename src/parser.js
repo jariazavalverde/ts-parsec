@@ -5,19 +5,6 @@ function Parser(run) {
     this.run = run;
 }
 exports.Parser = Parser;
-exports.curry = function (fn, ctx) {
-    var args = Array.prototype.slice.call(arguments, 2);
-    return function () {
-        var args2 = args.concat(Array.prototype.slice.call(arguments, 0));
-        if (args2.length >= fn.length) {
-            return fn.apply(ctx || null, args2);
-        }
-        else {
-            args2.unshift(fn, ctx);
-            return exports.curry.apply(null, args2);
-        }
-    };
-};
 // FUNCTOR
 // Apply a function to any value parsed.
 // (fmap)
@@ -33,7 +20,7 @@ Parser.prototype.cons = function (val) {
 // APPLICATIVE
 // Inject a value into the parser.
 // (return)
-exports.pure = function (val) {
+Parser.pure = function (val) {
     return new Parser(function (input) { return [[val, input]]; });
 };
 // Sequential application.
@@ -74,7 +61,7 @@ Parser.prototype.then = function (parser) {
 // ALTERNATIVE
 // The identity of Parser.prototype.or.
 // (empty)
-exports.empty = function () {
+Parser.empty = function () {
     return new Parser(function (_) { return []; });
 };
 // If the first parser doesn't produce any value, return the value
@@ -118,4 +105,32 @@ Parser.prototype.many = function () {
         }
         return val;
     });
+};
+// UTILS
+Parser.utils = {
+    // Currying a function.
+    // (curry)
+    curry: function (fn, ctx) {
+        var args = Array.prototype.slice.call(arguments, 2);
+        return function () {
+            var args2 = args.concat(Array.prototype.slice.call(arguments, 0));
+            if (args2.length >= fn.length) {
+                return fn.apply(ctx || null, args2);
+            }
+            else {
+                args2.unshift(fn, ctx);
+                return Parser.utils.curry.apply(null, args2);
+            }
+        };
+    },
+    // Identity function.
+    // (id)
+    id: function (val) {
+        return val;
+    },
+    // Function composition.
+    // (.)
+    compose: function (f) {
+        return function (g) { return function (x) { return f(g(x)); }; };
+    }
 };

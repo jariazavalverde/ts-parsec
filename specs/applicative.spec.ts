@@ -1,18 +1,11 @@
 import * as fc from "fast-check";
-import {Parser, pure, curry} from "../src/parser";
+import {Parser} from "../src/parser";
+const {pure} = Parser;
+const {compose, id} = Parser.utils;
 
 
 
 // Code under test
-
-function id<A>(val: A): A {
-	return val;
-}
-
-function compose<A, B, C>(f: (b: B) => C, g: (a: A) => B, x: A): C {
-	return f(g(x));
-}
-
 const char: Parser<string> = new Parser(input => input.length > 0 ? [[input[0], input.substr(1)]] : []);
 const length = (val: string) => val.length;
 
@@ -35,7 +28,7 @@ test("(composition) pure(compose).seq(u).seq(v).seq(w) == u.seq(v.seq(w))", () =
 	fc.assert(
 		fc.property(fc.integer(), fc.string(), (n, input) => {
 			let u = pure(x => x+1), v = pure(x => x*2), w = pure(n);
-			expect(pure(curry(compose)).seq(u).seq(v).seq(w).run(input)).toEqual(u.seq(v.seq(w)).run(input));
+			expect(pure(compose).seq(u).seq(v).seq(w).run(input)).toEqual(u.seq(v.seq(w)).run(input));
 		})
 	);
 });
