@@ -28,7 +28,7 @@ exports.pure = function (val) {
 // (>>=)
 Parser.prototype.bind = function (fn) {
     var _this = this;
-    return new Parser(function (input) { return [].concat.apply([], _this.runParser(input).map(function (val) { return fn(val[0]).run(val[1]); })); });
+    return new Parser(function (input) { return [].concat.apply([], _this.run(input).map(function (val) { return fn(val[0]).run(val[1]); })); });
 };
 // Sequentially compose two parsers, discarding any value produced
 // by the first.

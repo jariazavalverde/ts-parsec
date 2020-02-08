@@ -43,7 +43,7 @@ export const pure = function<A>(val: A): Parser<A> {
 // (>>=)
 Parser.prototype.bind = function<A, B>(fn: (val: A) => Parser<B>): Parser<B> {
 	return new Parser(input => [].concat.apply([],
-		this.runParser(input).map(
+		this.run(input).map(
 			(val: A) => fn(val[0]).run(val[1])
 		)
 	));
