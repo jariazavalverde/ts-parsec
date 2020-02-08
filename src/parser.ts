@@ -1,26 +1,41 @@
-interface Parser<A> {
+export interface Parser<A> {
 	run: (input: string) => Array<[A, string]>
+	// functor
+	map: <B>(fn: (val: A) => B) => Parser<B>
+	cons: <B>(val: B) => Parser<B>
+	// monad
 	bind: <B>(fn: (val: A) => Parser<B>) => Parser<B>
 	then: <B>(parser: Parser<B>) => Parser<B>
+	// alternative
 	or: (parser: Parser<A>) => Parser<A>
 	some: () => Parser<A[]>
 	many: () => Parser<A[]>
-}
+};
 
-function Parser<A>(run: (input: string) => Array<[A, string]>) {
+export function Parser<A>(run: (input: string) => Array<[A, string]>) {
 	this.run = run;
 }
 
-// Inject a value into the parser.
-// (return)
-Parser.pure = function<A>(val: A): Parser<A> {
-	return new Parser(input => [[val, input]]);
+// FUNCTOR
+
+// Apply a function to any value parsed.
+// (fmap)
+Parser.prototype.map = function<A, B>(fn: (val: A) => B): Parser<B> {
+	return new Parser(input => this.run(input).map((val: [A, string]) => [fn(val[0]), val[1]]));
 };
 
-// The identity of Parser.prototype.or.
-// (empty)
-Parser.empty = function(): Parser<[]> {
-	return new Parser(_ => []);
+// Replace all locations in any value parsed with the same value.
+// (<$)
+Parser.prototype.cons = function<A, B>(val: B): Parser<B> {
+	return this.map((_: A) => val);
+};
+
+// MONAD
+
+// Inject a value into the parser.
+// (return)
+export const pure = function<A>(val: A): Parser<A> {
+	return new Parser(input => [[val, input]]);
 };
 
 // Sequentially compose two parsers, passing any value produced
@@ -39,6 +54,14 @@ Parser.prototype.bind = function<A, B>(fn: (val: A) => Parser<B>): Parser<B> {
 // (>>)
 Parser.prototype.then = function<A, B>(parser: Parser<B>): Parser<B> {
 	return this.bind((_: A) => parser);
+};
+
+// ALTERNATIVE
+
+// The identity of Parser.prototype.or.
+// (empty)
+export const empty = function(): Parser<[]> {
+	return new Parser(_ => []);
 };
 
 // If the first parser doesn't produce any value, return the value

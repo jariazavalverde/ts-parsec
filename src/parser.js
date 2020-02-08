@@ -1,15 +1,27 @@
+"use strict";
+exports.__esModule = true;
+;
 function Parser(run) {
     this.run = run;
 }
+exports.Parser = Parser;
+// FUNCTOR
+// Apply a function to any value parsed.
+// (fmap)
+Parser.prototype.map = function (fn) {
+    var _this = this;
+    return new Parser(function (input) { return _this.run(input).map(function (val) { return [fn(val[0]), val[1]]; }); });
+};
+// Replace all locations in any value parsed with the same value.
+// (<$)
+Parser.prototype.cons = function (val) {
+    return this.map(function (_) { return val; });
+};
+// MONAD
 // Inject a value into the parser.
 // (return)
-Parser.pure = function (val) {
+exports.pure = function (val) {
     return new Parser(function (input) { return [[val, input]]; });
-};
-// The identity of Parser.prototype.or.
-// (empty)
-Parser.empty = function () {
-    return new Parser(function (_) { return []; });
 };
 // Sequentially compose two parsers, passing any value produced
 // by the first as an argument to the second.
@@ -23,6 +35,12 @@ Parser.prototype.bind = function (fn) {
 // (>>)
 Parser.prototype.then = function (parser) {
     return this.bind(function (_) { return parser; });
+};
+// ALTERNATIVE
+// The identity of Parser.prototype.or.
+// (empty)
+exports.empty = function () {
+    return new Parser(function (_) { return []; });
 };
 // If the first parser doesn't produce any value, return the value
 // produced by the second.
