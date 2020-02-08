@@ -1,0 +1,38 @@
+{
+  "name": "parser",
+  "version": "1.0.0",
+  "description": "A monadic parser written in TypeScript",
+  "main": "src/parser.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jariazavalverde/parser.git"
+  },
+  "author": "José Antonio Riaza Valverde",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/jariazavalverde/parser/issues"
+  },
+  "homepage": "https://github.com/jariazavalverde/parser#readme",
+  "dependencies": {
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.5"
+  },
+  "devDependencies": {
+    "@types/jest": "^25.1.2",
+    "fast-check": "^1.22.1",
+    "jest": "^25.1.0",
+    "ts-jest": "^25.2.0"
+  },
+  "jest": {
+    "moduleFileExtensions": ["ts", "tsx", "js"],
+    "globals": {"ts-jest": {"tsConfig": "tsconfig.json"}},
+    "transform": {"^.+\\.(ts|tsx)$": "ts-jest"},
+    "testMatch": ["**/specs/*.+(ts|tsx|js)"]
+  }
+}
