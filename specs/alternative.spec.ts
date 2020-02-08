@@ -1,11 +1,7 @@
 import * as fc from "fast-check";
 import {Parser} from "../src/parser";
 const {pure} = Parser;
-
-
-
-// Code under test
-const char: Parser<string> = new Parser(input => input.length > 0 ? [[input[0], input.substr(1)]] : []);
+const {anyChar} = Parser.char;
 
 
 
@@ -15,7 +11,7 @@ const char: Parser<string> = new Parser(input => input.length > 0 ? [[input[0], 
 test("v.some() == v.map(x => xs => [x].concat(xs)).seq(v.many())", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
-			let v = char;
+			let v = anyChar;
 			expect(v.some().run(input)).toEqual(v.map(x => xs => [x].concat(xs)).seq(v.many()).run(input));
 		})
 	);
@@ -25,7 +21,7 @@ test("v.some() == v.map(x => xs => [x].concat(xs)).seq(v.many())", () => {
 test("v.many() == v.some().or(pure([]))", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
-			let v = char;
+			let v = anyChar;
 			expect(v.many().run(input)).toEqual(v.some().or(pure([])).run(input));
 		})
 	);

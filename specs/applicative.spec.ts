@@ -2,11 +2,11 @@ import * as fc from "fast-check";
 import {Parser} from "../src/parser";
 const {pure} = Parser;
 const {compose, id} = Parser.utils;
+const {anyChar} = Parser.char;
 
 
 
 // Code under test
-const char: Parser<string> = new Parser(input => input.length > 0 ? [[input[0], input.substr(1)]] : []);
 const length = (val: string) => val.length;
 
 
@@ -17,7 +17,7 @@ const length = (val: string) => val.length;
 test("(identity) pure(id).seq(v) == v", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
-			let v = char;
+			let v = anyChar;
 			expect(pure(id).seq(v).run(input)).toEqual(v.run(input));
 		})
 	);
@@ -57,7 +57,7 @@ test("(interchange) u.seq(pure(y)) == pure(f => f(y)).seq(u)", () => {
 test("(functor) x.map(f) == pure(f).seq(x)", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
-			let f = length, x = char;
+			let f = length, x = anyChar;
 			expect(x.map(f).run(input)).toEqual(pure(f).seq(x).run(input));
 		})
 	);

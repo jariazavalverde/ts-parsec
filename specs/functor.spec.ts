@@ -1,11 +1,11 @@
 import * as fc from "fast-check";
 import {Parser} from "../src/parser";
 const {compose, id} = Parser.utils;
+const {anyChar} = Parser.char;
 
 
 
 // Code under test
-const char: Parser<string> = new Parser(input => input.length > 0 ? [[input[0], input.substr(1)]] : []);
 const length = (val: string) => val.length;
 const succ = (val: number) => val+1;
 
@@ -17,8 +17,8 @@ const succ = (val: number) => val+1;
 test("parser.map(id) == id(parser)", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
-			let char1 = char.map(id);
-			let char2 = id(char);
+			let char1 = anyChar.map(id);
+			let char2 = id(anyChar);
 			expect(char1.run(input)).toEqual(char2.run(input));
 		})
 	);
@@ -28,11 +28,11 @@ test("parser.map(id) == id(parser)", () => {
 test("parser.map(compose(f, g)) == compose(p => p.map(f), p => p.map(g))(parser)", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
-			let char1 = char.map(compose(succ)(length));
+			let char1 = anyChar.map(compose(succ)(length));
 			let char2 = compose
 				((p: Parser<number>) => p.map(succ))
 				((p: Parser<string>) => p.map(length))
-				(char);
+				(anyChar);
 			expect(char1.run(input)).toEqual(char2.run(input));
 		})
 	);

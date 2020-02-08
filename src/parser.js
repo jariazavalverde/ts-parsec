@@ -32,7 +32,7 @@ Parser.prototype.seq = function (parser) {
 // Sequence actions, discarding the value of the second argument.
 // (<*)
 Parser.prototype.lseq = function (parser) {
-    return exports.liftA2(function (x, _) { return x; }, this, parser);
+    return Parser.liftA2(function (x, _) { return x; }, this, parser);
 };
 // Sequence actions, discarding the value of the first argument.
 // (*>)
@@ -41,7 +41,7 @@ Parser.prototype.rseq = function (parser) {
 };
 // Lift a binary function to actions.
 // (liftA2)
-exports.liftA2 = function (fn, a, b) {
+Parser.liftA2 = function (fn, a, b) {
     return a.map(function (x) { return (function (y) { return fn(x, y); }); }).seq(b);
 };
 // MONAD
@@ -133,4 +133,79 @@ Parser.utils = {
     compose: function (f) {
         return function (g) { return function (x) { return f(g(x)); }; };
     }
+};
+// CHARACTERS
+var char_satisfy = function (predicate) {
+    return new Parser(function (input) { return input.length > 0 && predicate(input[0]) ? [[input[0], input.substr(1)]] : []; });
+};
+var char_string = function (val) {
+    var length = val.length;
+    return new Parser(function (input) { return input.length >= length && input.substr(0, length) == val ? [[val, input.substr(length)]] : []; });
+};
+var char_space = char_satisfy(function (c) { return /\s/.test(c); });
+var char_newline = char_satisfy(function (c) { return c === '\n'; });
+var char_crlf = char_string("\r\n").cons("\n");
+Parser.char = {
+    // Parse an alphabetic or numeric character.
+    // Returns the parsed character.
+    alphaNum: char_satisfy(function (c) { return c.toLowerCase() !== c.toUpperCase() || c >= '0' && c <= '9'; }),
+    // Parse any character.
+    // Returns the parsed character.
+    anyChar: new Parser(function (input) { return input.length > 0 ? [[input[0], input.substr(1)]] : []; }),
+    // Parse a single character.
+    // Returns the parsed character.
+    char: function (c) {
+        return char_satisfy(function (x) { return x === c; });
+    },
+    // Parse a carriage return character ('\r') followed by a newline character ('\n').
+    // Returns a newline character.
+    crlf: char_crlf,
+    // Parse a CRLF (see Parser.char.crlf) or LF (see Parser.char.newline) end-of-line.
+    // Returns a newline character ('\n').
+    endOfLine: char_newline.or(char_crlf),
+    // Parse a hexadecimal digit (a digit or a letter between 'a' and 'f' or 'A' and 'F').
+    // Returns the parsed character.
+    hexDigit: char_satisfy(function (c) { return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'; }),
+    // Parse an ASCII digit.
+    // Returns the parsed character.
+    digit: char_satisfy(function (c) { return c >= '0' && c <= '9'; }),
+    // Parse an alphabetic Unicode characters.
+    // Returns the parsed character.
+    letter: char_satisfy(function (c) { return c.toLowerCase() !== c.toUpperCase(); }),
+    // Parse an lower case letter.
+    // Returns the parsed character.
+    lower: char_satisfy(function (c) { return c.toLowerCase() !== c.toUpperCase() && c === c.toLowerCase(); }),
+    // Parse a newline character ('\n').
+    // Returns a newline character.
+    newline: char_newline,
+    // Succeed if the current character is not in the supplied list of characters.
+    // Returns the parsed character.
+    noneOf: function (cs) {
+        return char_satisfy(function (c) { return cs.indexOf(c) === -1; });
+    },
+    // Parse an octal digit (a character between '0' and '7').
+    // Returns the parsed character.
+    octDigit: char_satisfy(function (c) { return c >= '0' && c <= '7'; }),
+    // Succeed if the current character is in the supplied list of characters.
+    // Returns the parsed character.
+    oneOf: function (cs) {
+        return char_satisfy(function (c) { return cs.indexOf(c) !== -1; });
+    },
+    // Succeed for any character for which the supplied function returns true.
+    // Returns the parsed character.
+    satisfy: char_satisfy,
+    // Parse a white space character.
+    // Returns the parsed character.
+    space: char_space,
+    // Skip zero or more white space characters.
+    spaces: char_space.many().cons(undefined),
+    // Parse a sequence of characters.
+    // Returns the parsed string.
+    string: char_string,
+    // Parse a tab character ('\t').
+    // Returns a tab character.
+    tab: char_satisfy(function (c) { return c === '\t'; }),
+    // Parse an upper case letter.
+    // Returns the parsed character.
+    upper: char_satisfy(function (c) { return c.toLowerCase() !== c.toUpperCase() && c === c.toUpperCase(); })
 };
