@@ -8,11 +8,11 @@ const {anyChar} = Parser.char;
 // Properties
 
 // some v = (:) <$> v <*> many v
-test("v.some() == v.map(x => xs => [x].concat(xs)).seq(v.many())", () => {
+test("v.some() == v.map(x => xs => [x].concat(xs)).ap(v.many())", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
 			let v = anyChar;
-			expect(v.some().run(input)).toEqual(v.map(x => xs => [x].concat(xs)).seq(v.many()).run(input));
+			expect(v.some().run(input)).toEqual(v.map(x => xs => [x].concat(xs)).ap(v.many()).run(input));
 		})
 	);
 });

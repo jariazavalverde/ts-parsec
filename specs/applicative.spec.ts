@@ -14,51 +14,51 @@ const length = (val: string) => val.length;
 // Properties
 
 // (identity) pure id <*> v = v
-test("(identity) pure(id).seq(v) == v", () => {
+test("(identity) pure(id).ap(v) == v", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
 			let v = anyChar;
-			expect(pure(id).seq(v).run(input)).toEqual(v.run(input));
+			expect(pure(id).ap(v).run(input)).toEqual(v.run(input));
 		})
 	);
 });
 
 // (composition) pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
-test("(composition) pure(compose).seq(u).seq(v).seq(w) == u.seq(v.seq(w))", () => {
+test("(composition) pure(compose).ap(u).ap(v).ap(w) == u.ap(v.ap(w))", () => {
 	fc.assert(
 		fc.property(fc.integer(), fc.string(), (n, input) => {
 			let u = pure(x => x+1), v = pure(x => x*2), w = pure(n);
-			expect(pure(compose).seq(u).seq(v).seq(w).run(input)).toEqual(u.seq(v.seq(w)).run(input));
+			expect(pure(compose).ap(u).ap(v).ap(w).run(input)).toEqual(u.ap(v.ap(w)).run(input));
 		})
 	);
 });
 
 // (homomorphism) pure f <*> pure x = pure (f x)
-test("(homomorphism) pure(f).seq(pure(x)) == pure(f(x))", () => {
+test("(homomorphism) pure(f).ap(pure(x)) == pure(f(x))", () => {
 	fc.assert(
 		fc.property(fc.integer(), fc.string(), (x, input) => {
 			let f = x => x+1;
-			expect(pure(f).seq(pure(x)).run(input)).toEqual(pure(f(x)).run(input));
+			expect(pure(f).ap(pure(x)).run(input)).toEqual(pure(f(x)).run(input));
 		})
 	);
 });
 
 // (interchange) u <*> pure y = pure ($ y) <*> u
-test("(interchange) u.seq(pure(y)) == pure(f => f(y)).seq(u)", () => {
+test("(interchange) u.ap(pure(y)) == pure(f => f(y)).ap(u)", () => {
 	fc.assert(
 		fc.property(fc.integer(), fc.string(), (y, input) => {
 			let u = pure(x => x+1);
-			expect(u.seq(pure(y)).run(input)).toEqual(pure(f => f(y)).seq(u).run(input));
+			expect(u.ap(pure(y)).run(input)).toEqual(pure(f => f(y)).ap(u).run(input));
 		})
 	);
 });
 
 // (functor) fmap f x = pure f <*> x
-test("(functor) x.map(f) == pure(f).seq(x)", () => {
+test("(functor) x.map(f) == pure(f).ap(x)", () => {
 	fc.assert(
 		fc.property(fc.string(), input => {
 			let f = length, x = anyChar;
-			expect(x.map(f).run(input)).toEqual(pure(f).seq(x).run(input));
+			expect(x.map(f).run(input)).toEqual(pure(f).ap(x).run(input));
 		})
 	);
 });

@@ -1,5 +1,5 @@
 import {Parser} from "../src/parser";
-const {pure, empty} = Parser;
+const {pure, empty, liftA2} = Parser;
 const {char, digit} = Parser.char;
 const {curry} = Parser.utils;
 
@@ -20,15 +20,17 @@ natural.set(digit.some().map(x => parseInt(x.join(""))));
 integer.set(char('-').then(natural).map(x => -x).or(natural));
 
 // <term> -> "(" <expr> ")" | <integer>
-term.set(char('(').then(expr).lseq(char(')')).or(integer));
+term.set(char('(').then(expr).left(char(')')).or(integer));
 
 // <factor> -> <term> "*" <factor> | <term>
-factor.set(term.bind(a => char("*").then(factor).bind(b => pure(a*b))).or(term));
-factor.set(pure(curry((x,y) => x*y)).seq(term).seq(char('*').rseq(factor)).or(term));
+factor.set(term.bind(a => char('*').then(factor).bind(b => pure(a*b))).or(term));
+factor.set(<Parser<number>> pure(curry((x,y) => x*y)).ap(term).ap(char('*').then(factor)).or(term));
+factor.set(liftA2((x,y) => x*y, term, char('*').then(factor)).or(term));
 
 // <expr> -> <factor> "+" <expr> | <factor>
-expr.set(factor.bind(a => char("+").then(expr).bind(b => pure(a+b))).or(factor));
-expr.set(pure(curry((x,y) => x+y)).seq(factor).seq(char('+').rseq(expr)).or(factor));
+expr.set(factor.bind(a => char('+').then(expr).bind(b => pure(a+b))).or(factor));
+expr.set(<Parser<number>> pure(curry((x,y) => x+y)).ap(factor).ap(char('+').then(expr)).or(factor));
+expr.set(liftA2((x,y) => x+y, factor, char('+').then(expr)).or(factor));
 
 
 

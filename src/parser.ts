@@ -1,15 +1,15 @@
 export interface Parser<A> {
 	run: (input: string) => Array<[A, string]>
+	set: (parser: Parser<A>) => undefined
 	// functor
 	map: <B>(fn: (val: A) => B) => Parser<B>
-	cons: <B>(val: B) => Parser<B>
+	replace: <B>(val: B) => Parser<B>
 	// applicative
-	seq: <B, C>(parser: Parser<B>) => Parser<C>
-	lseq: <B>(parser: Parser<B>) => Parser<A>
-	rseq: <B>(parser: Parser<B>) => Parser<B>
+	ap: <B, C>(parser: Parser<B>) => Parser<C>
+	then: <B>(parser: Parser<B>) => Parser<B>
+	left: <B>(parser: Parser<B>) => Parser<A>
 	// monad
 	bind: <B>(fn: (val: A) => Parser<B>) => Parser<B>
-	then: <B>(parser: Parser<B>) => Parser<B>
 	// alternative
 	or: (parser: Parser<A>) => Parser<A>
 	some: () => Parser<A[]>
@@ -36,7 +36,7 @@ Parser.prototype.map = function<A, B>(fn: (val: A) => B): Parser<B> {
 
 // Replace all locations in any value parsed with the same value.
 // (<$)
-Parser.prototype.cons = function<A, B>(val: B): Parser<B> {
+Parser.prototype.replace = function<A, B>(val: B): Parser<B> {
 	return this.map((_: A) => val);
 };
 
@@ -45,36 +45,37 @@ Parser.prototype.cons = function<A, B>(val: B): Parser<B> {
 // APPLICATIVE
 
 // Inject a value into the parser.
-// (return)
+// (pure) (return)
 Parser.pure = function<A>(val: A): Parser<A> {
 	return new Parser(input => [[val, input]]);
 };
 
 // Sequential application.
 // (<*>)
-Parser.prototype.seq = function<A, B, C>(parser: Parser<B>): Parser<C> {
+Parser.prototype.ap = function<A, B, C>(parser: Parser<B>): Parser<C> {
 	return new Parser(input => [].concat.apply([],
 		this.run(input).map(
 			(val: [(b: B) => C, string]) => parser.map(val[0]).run(val[1]))
 	));
 };
 
-// Sequence actions, discarding the value of the second argument.
-// (<*)
-Parser.prototype.lseq = function<A, B>(parser: Parser<B>): Parser<A> {
-	return Parser.liftA2((x: A, _) => x, this, parser);
+// Sequence actions, discarding the value of the first argument.
+// (*>) (>>)
+Parser.prototype.then = function<B>(parser: Parser<B>): Parser<B> {
+	return this.replace((x: B) => x).ap(parser);
 };
 
-// Sequence actions, discarding the value of the first argument.
-// (*>)
-Parser.prototype.rseq = function<B>(parser: Parser<B>): Parser<B> {
-	return this.cons((x: B) => x).seq(parser);
+// Sequence actions, discarding the value of the second argument.
+// (<*)
+Parser.prototype.left = function<A, B>(parser: Parser<B>): Parser<A> {
+	return Parser.liftA2((x: A, _) => x, this, parser);
 };
 
 // Lift a binary function to actions.
 // (liftA2)
 Parser.liftA2 = function<A, B, C>(fn: (a: A, b: B) => C, a: Parser<A>, b: Parser<B>): Parser<C> {
-	return a.map((x: A) => ((y: B) => fn(x, y))).seq(b);
+	fn = fn.length > 1 ? Parser.utils.curry(fn) : fn;
+	return Parser.pure(fn).ap(a).ap(b);
 };
 
 
@@ -90,13 +91,6 @@ Parser.prototype.bind = function<A, B>(fn: (val: A) => Parser<B>): Parser<B> {
 			(val: A) => fn(val[0]).run(val[1])
 		)
 	));
-};
-
-// Sequentially compose two parsers, discarding any value produced
-// by the first.
-// (>>)
-Parser.prototype.then = function<A, B>(parser: Parser<B>): Parser<B> {
-	return this.bind((_: A) => parser);
 };
 
 
@@ -204,7 +198,7 @@ const char_string = function(val: string): Parser<string> {
 
 const char_space = char_satisfy(c => /\s/.test(c));
 const char_newline = char_satisfy(c => c === '\n');
-const char_crlf = char_string("\r\n").cons("\n");
+const char_crlf = char_string("\r\n").replace("\n");
 
 Parser.char = {
 
@@ -275,7 +269,7 @@ Parser.char = {
 	space: char_space,
 
 	// Skip zero or more white space characters.
-	spaces: char_space.many().cons(undefined),
+	spaces: char_space.many().replace(undefined),
 
 	// Parse a sequence of characters.
 	// Returns the parsed string.

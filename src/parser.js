@@ -17,35 +17,36 @@ Parser.prototype.map = function (fn) {
 };
 // Replace all locations in any value parsed with the same value.
 // (<$)
-Parser.prototype.cons = function (val) {
+Parser.prototype.replace = function (val) {
     return this.map(function (_) { return val; });
 };
 // APPLICATIVE
 // Inject a value into the parser.
-// (return)
+// (pure) (return)
 Parser.pure = function (val) {
     return new Parser(function (input) { return [[val, input]]; });
 };
 // Sequential application.
 // (<*>)
-Parser.prototype.seq = function (parser) {
+Parser.prototype.ap = function (parser) {
     var _this = this;
     return new Parser(function (input) { return [].concat.apply([], _this.run(input).map(function (val) { return parser.map(val[0]).run(val[1]); })); });
 };
+// Sequence actions, discarding the value of the first argument.
+// (*>) (>>)
+Parser.prototype.then = function (parser) {
+    return this.replace(function (x) { return x; }).ap(parser);
+};
 // Sequence actions, discarding the value of the second argument.
 // (<*)
-Parser.prototype.lseq = function (parser) {
+Parser.prototype.left = function (parser) {
     return Parser.liftA2(function (x, _) { return x; }, this, parser);
-};
-// Sequence actions, discarding the value of the first argument.
-// (*>)
-Parser.prototype.rseq = function (parser) {
-    return this.cons(function (x) { return x; }).seq(parser);
 };
 // Lift a binary function to actions.
 // (liftA2)
 Parser.liftA2 = function (fn, a, b) {
-    return a.map(function (x) { return (function (y) { return fn(x, y); }); }).seq(b);
+    fn = fn.length > 1 ? Parser.utils.curry(fn) : fn;
+    return Parser.pure(fn).ap(a).ap(b);
 };
 // MONAD
 // Sequentially compose two parsers, passing any value produced
@@ -54,12 +55,6 @@ Parser.liftA2 = function (fn, a, b) {
 Parser.prototype.bind = function (fn) {
     var _this = this;
     return new Parser(function (input) { return [].concat.apply([], _this.run(input).map(function (val) { return fn(val[0]).run(val[1]); })); });
-};
-// Sequentially compose two parsers, discarding any value produced
-// by the first.
-// (>>)
-Parser.prototype.then = function (parser) {
-    return this.bind(function (_) { return parser; });
 };
 // ALTERNATIVE
 // The identity of Parser.prototype.or.
@@ -147,7 +142,7 @@ var char_string = function (val) {
 };
 var char_space = char_satisfy(function (c) { return /\s/.test(c); });
 var char_newline = char_satisfy(function (c) { return c === '\n'; });
-var char_crlf = char_string("\r\n").cons("\n");
+var char_crlf = char_string("\r\n").replace("\n");
 Parser.char = {
     // Parse an alphabetic or numeric character.
     // Returns the parsed character.
@@ -201,7 +196,7 @@ Parser.char = {
     // Returns the parsed character.
     space: char_space,
     // Skip zero or more white space characters.
-    spaces: char_space.many().cons(undefined),
+    spaces: char_space.many().replace(undefined),
     // Parse a sequence of characters.
     // Returns the parsed string.
     string: char_string,
