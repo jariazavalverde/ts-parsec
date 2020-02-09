@@ -68,7 +68,7 @@ Parser.prototype.or = function (parser) {
     var _this = this;
     return new Parser(function (input) {
         var val = _this.run(input);
-        if (val.length == 0)
+        if (val.length === 0)
             return parser.run(input);
         return val;
     });
@@ -209,4 +209,33 @@ Parser.char = {
     // Parse an upper case letter.
     // Returns the parsed character.
     upper: char_satisfy(function (c) { return c.toLowerCase() !== c.toUpperCase() && c === c.toUpperCase(); })
+};
+// COMBINATORS
+Parser.combinator = {
+    // Parse open, followed by the parser and close.
+    // Returns the value returned by the parser.
+    between: function (open, close, parser) {
+        return open.then(parser).left(close);
+    },
+    // Apply the parsers in the array in order, until one of them succeeds.
+    // Returns the value of the succeeding parser.
+    choice: function (parsers) {
+        if (parsers.length === 0)
+            return Parser.empty();
+        return parsers.reduce(function (acc, parser) { return acc.or(parser); });
+    },
+    // Parse n occurrences of a parser. If n is smaller or equal to zero, the parser equals to Parser.pure([]).
+    // Returns a list of values returned by the parser.
+    count: function (n, parser) {
+        if (n <= 0)
+            return Parser.pure([]);
+        return new Parser(function (input) {
+            var val, xs = parser.run(input).map(function (x) { return [[x[0]], x[1]]; });
+            while (xs.length > 0 && --n > 0) {
+                val = xs;
+                xs = [].concat.apply([], val.map(function (x) { return parser.run(x[1]).map(function (y) { return [x[0].concat([y[0]]), y[1]]; }); }));
+            }
+            return xs;
+        });
+    }
 };

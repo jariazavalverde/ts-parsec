@@ -108,7 +108,7 @@ Parser.empty = function(): Parser<undefined> {
 Parser.prototype.or = function<A>(parser: Parser<A>): Parser<A> {
 	return new Parser(input => {
 		let val = this.run(input);
-		if(val.length == 0)
+		if(val.length === 0)
 			return parser.run(input);
 		return val;
 	});
@@ -286,5 +286,43 @@ Parser.char = {
 	// Parse an upper case letter.
 	// Returns the parsed character.
 	upper: char_satisfy(c => c.toLowerCase() !== c.toUpperCase() && c === c.toUpperCase())
+
+};
+
+
+
+// COMBINATORS
+Parser.combinator = {
+
+	// Parse open, followed by the parser and close.
+	// Returns the value returned by the parser.
+	between: function <A, B, C>(open: Parser<B>, close: Parser<C>, parser: Parser<A>): Parser<A> {
+		return open.then(parser).left(close);
+	},
+
+	// Apply the parsers in the array in order, until one of them succeeds.
+	// Returns the value of the succeeding parser.
+	choice: function <A>(parsers: Array<Parser<A>>): Parser<A> {
+		if(parsers.length === 0)
+			return Parser.empty();
+		return parsers.reduce((acc, parser) => acc.or(parser));
+	},
+
+	// Parse n occurrences of a parser. If n is smaller or equal to zero, the parser equals to Parser.pure([]).
+	// Returns a list of values returned by the parser.
+	count: function <A>(n: number, parser: Parser<A>): Parser<A[]> {
+		if(n <= 0)
+			return Parser.pure([]);
+		return new Parser(input => {
+			let val: Array<[A[], string]>,
+				 xs: Array<[A[], string]> = parser.run(input).map((x: [A, string]) => [[x[0]], x[1]]);
+			while(xs.length > 0 && --n > 0) {
+				val = xs;
+				xs = [].concat.apply([],
+						val.map((x: [A[], string]) => parser.run(x[1]).map((y: [A, string]) => [x[0].concat([y[0]]), y[1]])))
+			}
+			return xs;
+		});
+	}
 
 };

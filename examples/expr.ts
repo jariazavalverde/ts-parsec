@@ -1,6 +1,7 @@
 import {Parser} from "../src/parser";
 const {pure, empty, liftA2} = Parser;
 const {char, digit} = Parser.char;
+const {between} = Parser.combinator;
 const {curry2} = Parser.utils;
 
 
@@ -21,6 +22,7 @@ integer.set(char('-').then(natural).map(x => -x).or(natural));
 
 // <term> -> "(" <expr> ")" | <integer>
 term.set(char('(').then(expr).left(char(')')).or(integer));
+term.set(between(char('('), char(')'), expr).or(integer));
 
 // <factor> -> <term> "*" <factor> | <term>
 const mul = (x: number, y: number): number => x*y;

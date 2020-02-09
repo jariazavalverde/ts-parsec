@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var parser_1 = require("../src/parser");
 var pure = parser_1.Parser.pure, empty = parser_1.Parser.empty, liftA2 = parser_1.Parser.liftA2;
 var _a = parser_1.Parser.char, char = _a.char, digit = _a.digit;
+var between = parser_1.Parser.combinator.between;
 var curry2 = parser_1.Parser.utils.curry2;
 // Grammar
 var natural = empty(), integer = empty(), term = empty(), factor = empty(), expr = empty();
@@ -12,6 +13,7 @@ natural.set(digit.some().map(function (x) { return parseInt(x.join("")); }));
 integer.set(char('-').then(natural).map(function (x) { return -x; }).or(natural));
 // <term> -> "(" <expr> ")" | <integer>
 term.set(char('(').then(expr).left(char(')')).or(integer));
+term.set(between(char('('), char(')'), expr).or(integer));
 // <factor> -> <term> "*" <factor> | <term>
 var mul = function (x, y) { return x * y; };
 factor.set(term.bind(function (a) { return char('*').then(factor).bind(function (b) { return pure(a * b); }); }).or(term));
