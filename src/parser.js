@@ -5,6 +5,9 @@ function Parser(run) {
     this.run = run;
 }
 exports.Parser = Parser;
+Parser.prototype.set = function (parser) {
+    this.run = parser.run;
+};
 // FUNCTOR
 // Apply a function to any value parsed.
 // (fmap)

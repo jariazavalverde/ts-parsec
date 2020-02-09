@@ -1,5 +1,3 @@
-import { boolean, string } from "fast-check/*";
-
 export interface Parser<A> {
 	run: (input: string) => Array<[A, string]>
 	// functor
@@ -21,6 +19,10 @@ export interface Parser<A> {
 export function Parser<A, B>(run: (input: string) => Array<[A, string]>) {
 	this.run = run;
 }
+
+Parser.prototype.set = function<A>(parser: Parser<A>) {
+	this.run = parser.run;
+};
 
 
 
@@ -103,7 +105,7 @@ Parser.prototype.then = function<A, B>(parser: Parser<B>): Parser<B> {
 
 // The identity of Parser.prototype.or.
 // (empty)
-Parser.empty = function(): Parser<[]> {
+Parser.empty = function(): Parser<undefined> {
 	return new Parser(_ => []);
 };
 
