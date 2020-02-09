@@ -1,7 +1,7 @@
 import {Parser} from "../src/parser";
 const {pure, empty, liftA2} = Parser;
 const {char, digit} = Parser.char;
-const {curry} = Parser.utils;
+const {curry2} = Parser.utils;
 
 
 
@@ -23,14 +23,16 @@ integer.set(char('-').then(natural).map(x => -x).or(natural));
 term.set(char('(').then(expr).left(char(')')).or(integer));
 
 // <factor> -> <term> "*" <factor> | <term>
+const mul = (x: number, y: number): number => x*y;
 factor.set(term.bind(a => char('*').then(factor).bind(b => pure(a*b))).or(term));
-factor.set(<Parser<number>> pure(curry((x,y) => x*y)).ap(term).ap(char('*').then(factor)).or(term));
-factor.set(liftA2((x,y) => x*y, term, char('*').then(factor)).or(term));
+factor.set(pure(curry2(mul)).ap(term).ap(char('*').then(factor)).or(term));
+factor.set(liftA2(curry2(mul), term, char('*').then(factor)).or(term));
 
 // <expr> -> <factor> "+" <expr> | <factor>
+const add = (x: number, y: number): number => x+y;
 expr.set(factor.bind(a => char('+').then(expr).bind(b => pure(a+b))).or(factor));
-expr.set(<Parser<number>> pure(curry((x,y) => x+y)).ap(factor).ap(char('+').then(expr)).or(factor));
-expr.set(liftA2((x,y) => x+y, factor, char('+').then(expr)).or(factor));
+expr.set(pure(curry2(add)).ap(factor).ap(char('+').then(expr)).or(factor));
+expr.set(liftA2(curry2(add), factor, char('+').then(expr)).or(factor));
 
 
 

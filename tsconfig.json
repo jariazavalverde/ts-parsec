@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"target": "es5",
+		"lib": ["es5", "es6", "dom"]
+	},
+	"include": [
+		"src/*.ts",
+		"examples/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"specs/*.spec.ts"
+	]
+}

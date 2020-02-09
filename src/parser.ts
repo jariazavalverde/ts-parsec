@@ -5,7 +5,7 @@ export interface Parser<A> {
 	map: <B>(fn: (val: A) => B) => Parser<B>
 	replace: <B>(val: B) => Parser<B>
 	// applicative
-	ap: <B, C>(parser: Parser<B>) => Parser<C>
+	ap: <A, B>(this: Parser<(a: A) => B>, parser: Parser<A>) => Parser<B>
 	then: <B>(parser: Parser<B>) => Parser<B>
 	left: <B>(parser: Parser<B>) => Parser<A>
 	// monad
@@ -52,10 +52,10 @@ Parser.pure = function<A>(val: A): Parser<A> {
 
 // Sequential application.
 // (<*>)
-Parser.prototype.ap = function<A, B, C>(parser: Parser<B>): Parser<C> {
+Parser.prototype.ap = function<A, B>(this: Parser<(a: A) => B>, parser: Parser<A>): Parser<B> {
 	return new Parser(input => [].concat.apply([],
 		this.run(input).map(
-			(val: [(b: B) => C, string]) => parser.map(val[0]).run(val[1]))
+			(val: [(a: A) => B, string]) => parser.map(val[0]).run(val[1]))
 	));
 };
 
@@ -68,13 +68,12 @@ Parser.prototype.then = function<B>(parser: Parser<B>): Parser<B> {
 // Sequence actions, discarding the value of the second argument.
 // (<*)
 Parser.prototype.left = function<A, B>(parser: Parser<B>): Parser<A> {
-	return Parser.liftA2((x: A, _) => x, this, parser);
+	return Parser.liftA2((x: A) => (_: B) => x, this, parser);
 };
 
 // Lift a binary function to actions.
 // (liftA2)
-Parser.liftA2 = function<A, B, C>(fn: (a: A, b: B) => C, a: Parser<A>, b: Parser<B>): Parser<C> {
-	fn = fn.length > 1 ? Parser.utils.curry(fn) : fn;
+Parser.liftA2 = function<A, B, C>(fn: (a: A) => (b: B) => C, a: Parser<A>, b: Parser<B>): Parser<C> {
 	return Parser.pure(fn).ap(a).ap(b);
 };
 
@@ -154,8 +153,7 @@ Parser.prototype.many = function<A>(): Parser<A[]> {
 // UTILS
 Parser.utils = {
 
-	// Currying a function.
-	// (curry)
+	// Currying a function (unsafe).
 	curry: function(fn, ctx?) {
 		var args = Array.prototype.slice.call(arguments, 2);
 		return function() {
@@ -167,6 +165,12 @@ Parser.utils = {
 				return Parser.utils.curry.apply(null, args2);
 			}
 		};
+	},
+
+	// Currying a function of two parameters.
+	// (curry2)
+	curry2: function <A, B, C>(fn: (a: A, b: B) => C): (a: A) => (b: B) => C {
+		return x => y => fn(x, y);
 	},
 
 	// Identity function.

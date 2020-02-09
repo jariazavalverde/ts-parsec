@@ -1,5 +1,5 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 ;
 function Parser(run) {
     this.run = run;
@@ -40,12 +40,11 @@ Parser.prototype.then = function (parser) {
 // Sequence actions, discarding the value of the second argument.
 // (<*)
 Parser.prototype.left = function (parser) {
-    return Parser.liftA2(function (x, _) { return x; }, this, parser);
+    return Parser.liftA2(function (x) { return function (_) { return x; }; }, this, parser);
 };
 // Lift a binary function to actions.
 // (liftA2)
 Parser.liftA2 = function (fn, a, b) {
-    fn = fn.length > 1 ? Parser.utils.curry(fn) : fn;
     return Parser.pure(fn).ap(a).ap(b);
 };
 // MONAD
@@ -106,8 +105,7 @@ Parser.prototype.many = function () {
 };
 // UTILS
 Parser.utils = {
-    // Currying a function.
-    // (curry)
+    // Currying a function (unsafe).
     curry: function (fn, ctx) {
         var args = Array.prototype.slice.call(arguments, 2);
         return function () {
@@ -120,6 +118,11 @@ Parser.utils = {
                 return Parser.utils.curry.apply(null, args2);
             }
         };
+    },
+    // Currying a function of two parameters.
+    // (curry2)
+    curry2: function (fn) {
+        return function (x) { return function (y) { return fn(x, y); }; };
     },
     // Identity function.
     // (id)
