@@ -237,5 +237,45 @@ Parser.combinator = {
             }
             return xs;
         });
+    },
+    // This parser only succeeds at the end of the input.
+    eof: new Parser(function (input) { return input === "" ? [[undefined, ""]] : []; }),
+    // Apply a parser one or more times.
+    // Returns a list of the returned values of the parser.
+    many: function (parser) {
+        return parser.many();
+    },
+    // Try to apply a parser.
+    // If it fails without consuming input, it returns a default value, otherwise the value returned by the parser.
+    option: function (val, parser) {
+        return parser.or(Parser.pure(val));
+    },
+    // Try to apply a parser. It will parse the given parser or nothing. It only fails if the parser fails after consuming input. 
+    // It discards the result of the parser.
+    optional: function (parser) {
+        return parser.then(Parser.pure(undefined)).or(Parser.pure(undefined));
+    },
+    // Parse zero or more occurrences of a parser, separated by a separator.
+    // Returns a list of values returned by the parser.
+    sepBy: function (sep, parser) {
+        return parser.bind(function (x) {
+            return sep.then(parser).many().bind(function (xs) {
+                return Parser.pure([x].concat(xs));
+            });
+        }).or(Parser.pure([]));
+    },
+    // Parse one or more occurrences of a parser, separated by a separator.
+    // Returns a list of values returned by the parser.
+    sepBy1: function (sep, parser) {
+        return parser.bind(function (x) {
+            return sep.then(parser).many().bind(function (xs) {
+                return Parser.pure([x].concat(xs));
+            });
+        });
+    },
+    // Apply a parser zero or more times.
+    // Returns a list of the returned values of the parser.
+    some: function (parser) {
+        return parser.some();
     }
 };

@@ -1,7 +1,7 @@
 import * as fc from "fast-check";
 import {Parser} from "../src/parser";
-const {char, noneOf, string} = Parser.char;
-const {between, choice, count} = Parser.combinator;
+const {anyChar, char, digit, noneOf, string} = Parser.char;
+const {between, choice, count, eof, sepBy} = Parser.combinator;
 
 
 
@@ -19,6 +19,14 @@ test("Basic tests", () => {
 			expect(count(3, char('a')).run("aaabcd")).toEqual([[['a', 'a', 'a'], "bcd"]]);
 			expect(count(4, char('a')).run("aaabcd")).toEqual([]);
 			expect(count(0, char('a')).run("aaabcd")).toEqual([[[], "aaabcd"]]);
+			// eof
+			expect(eof.run("")).toEqual([[undefined, ""]]);
+			expect(eof.run("some input")).toEqual([]);
+			// sepBy
+			expect(sepBy(char(','), digit).run("1,2,3,4,5")).toEqual([[['1','2','3','4','5'], ""]]);
+			expect(sepBy(char(','), digit).run(",1,2,3,4,5")).toEqual([[[], ",1,2,3,4,5"]]);
+			expect(sepBy(char(','), anyChar).run("a,b,c:d,e")).toEqual([[['a','b','c'], ":d,e"]]);
+			expect(sepBy(char(','), anyChar).run(",a,b,c,d,e")).toEqual([[[','], "a,b,c,d,e"]]);
 		})
 	);
 });

@@ -296,7 +296,7 @@ Parser.combinator = {
 
 	// Parse open, followed by the parser and close.
 	// Returns the value returned by the parser.
-	between: function <A, B, C>(open: Parser<B>, close: Parser<C>, parser: Parser<A>): Parser<A> {
+	between: function <A, B, C>(open: Parser<A>, close: Parser<B>, parser: Parser<C>): Parser<C> {
 		return open.then(parser).left(close);
 	},
 
@@ -323,6 +323,53 @@ Parser.combinator = {
 			}
 			return xs;
 		});
+	},
+
+	// This parser only succeeds at the end of the input.
+	eof: new Parser(input => input === "" ? [[undefined, ""]] : []),
+
+	// Apply a parser one or more times.
+	// Returns a list of the returned values of the parser.
+	many: function <A>(parser: Parser<A>): Parser<A[]> {
+		return parser.many();
+	},
+
+	// Try to apply a parser.
+	// If it fails without consuming input, it returns a default value, otherwise the value returned by the parser.
+	option: function <A>(val: A, parser: Parser<A>): Parser<A> {
+		return parser.or(Parser.pure(val));
+	},
+
+	// Try to apply a parser. It will parse the given parser or nothing. It only fails if the parser fails after consuming input. 
+	// It discards the result of the parser.
+	optional: function <A>(parser: Parser<A>): Parser<undefined> {
+		return parser.then(Parser.pure(undefined)).or(Parser.pure(undefined));
+	},
+
+	// Parse zero or more occurrences of a parser, separated by a separator.
+	// Returns a list of values returned by the parser.
+	sepBy: function <A, B>(sep: Parser<A>, parser: Parser<B>): Parser<B[]> {
+		return parser.bind(x =>
+			sep.then(parser).many().bind(xs =>
+				Parser.pure([x].concat(xs))
+			)
+		).or(Parser.pure([]));
+	},
+
+	// Parse one or more occurrences of a parser, separated by a separator.
+	// Returns a list of values returned by the parser.
+	sepBy1: function <A, B>(sep: Parser<A>, parser: Parser<B>): Parser<B[]> {
+		return parser.bind(x =>
+			sep.then(parser).many().bind(xs =>
+				Parser.pure([x].concat(xs))
+			)
+		);
+	},
+
+	// Apply a parser zero or more times.
+	// Returns a list of the returned values of the parser.
+	some: function <A>(parser: Parser<A>): Parser<A[]> {
+		return parser.some();
 	}
 
 };
