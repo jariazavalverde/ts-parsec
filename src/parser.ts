@@ -1,6 +1,8 @@
 export interface Parser<A> {
+	label: string
 	run: (input: string) => Array<[A, string]>
 	set: (parser: Parser<A>) => undefined
+	to: (label: string) => Parser<A>
 	// functor
 	map: <B>(fn: (val: A) => B) => Parser<B>
 	replace: <B>(val: B) => Parser<B>
@@ -18,11 +20,37 @@ export interface Parser<A> {
 
 export function Parser<A, B>(run: (input: string) => Array<[A, string]>) {
 	this.run = run;
+	this.label = undefined;
 }
 
 Parser.prototype.set = function<A>(parser: Parser<A>) {
 	this.run = parser.run;
 };
+
+Parser.prototype.to = function<A>(label: string) {
+	this.run = ((input: string) => this.run(input));
+	this.label = label;
+};
+
+Parser.make = function(parsers: Array<((val: any[]) => Parser<any>) | Parser<any>>): Parser<any> {
+	return new Parser(input => {
+		let args = [];
+		let parser: Parser<any> = typeof parsers[0] === "function" ? (<(val: any[]) => Parser<any>><unknown>parsers[0])(args) : <Parser<any>><unknown>parsers[0];
+		let xs: Array<[[any, string], Array<any>]> = parser.run(input).map(x => [x, args.slice()]);
+		let ys: Array<[[any, string], Array<any>]>;
+		for(let i = 1; i < parsers.length; i++) {
+			ys = [];
+			for(let j = 0; j < xs.length; j++) {
+				args = xs[j][1];
+				args[i-1] = xs[j][0][0];
+				parser = typeof parsers[i] === "function" ? (<(val: any[]) => Parser<any>><unknown>parsers[i])(args) : <Parser<any>><unknown>parsers[i];
+				ys = ys.concat(parser.run(xs[j][0][1]).map(x => [x, args.slice()]));
+			}
+			xs = ys;
+		}
+		return xs.map(x => x[0]);
+	});
+}
 
 
 

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var parser_1 = require("../src/parser");
-var pure = parser_1.Parser.pure, empty = parser_1.Parser.empty, liftA2 = parser_1.Parser.liftA2;
+var pure = parser_1.Parser.pure, empty = parser_1.Parser.empty, make = parser_1.Parser.make, liftA2 = parser_1.Parser.liftA2;
 var _a = parser_1.Parser.char, char = _a.char, digit = _a.digit;
 var between = parser_1.Parser.combinator.between;
 var curry2 = parser_1.Parser.utils.curry2;
@@ -19,6 +19,12 @@ var mul = function (x, y) { return x * y; };
 factor.set(term.bind(function (a) { return char('*').then(factor).bind(function (b) { return pure(a * b); }); }).or(term));
 factor.set(pure(curry2(mul)).ap(term).ap(char('*').then(factor)).or(term));
 factor.set(liftA2(curry2(mul), term, char('*').then(factor)).or(term));
+factor.set(make([
+    term,
+    char('*'),
+    factor,
+    function (x) { return pure(x[0] * x[2]); }
+]).or(term));
 // <expr> -> <factor> "+" <expr> | <factor>
 var add = function (x, y) { return x + y; };
 expr.set(factor.bind(function (a) { return char('+').then(expr).bind(function (b) { return pure(a + b); }); }).or(factor));

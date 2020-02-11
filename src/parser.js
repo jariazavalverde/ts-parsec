@@ -3,10 +3,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 ;
 function Parser(run) {
     this.run = run;
+    this.label = undefined;
 }
 exports.Parser = Parser;
 Parser.prototype.set = function (parser) {
     this.run = parser.run;
+};
+Parser.prototype.to = function (label) {
+    var _this = this;
+    this.run = (function (input) { return _this.run(input); });
+    this.label = label;
+};
+Parser.make = function (parsers) {
+    return new Parser(function (input) {
+        var args = [];
+        var parser = typeof parsers[0] === "function" ? parsers[0](args) : parsers[0];
+        var xs = parser.run(input).map(function (x) { return [x, args.slice()]; });
+        var ys;
+        for (var i = 1; i < parsers.length; i++) {
+            ys = [];
+            for (var j = 0; j < xs.length; j++) {
+                args = xs[j][1];
+                args[i - 1] = xs[j][0][0];
+                parser = typeof parsers[i] === "function" ? parsers[i](args) : parsers[i];
+                ys = ys.concat(parser.run(xs[j][0][1]).map(function (x) { return [x, args.slice()]; }));
+            }
+            xs = ys;
+        }
+        return xs.map(function (x) { return x[0]; });
+    });
 };
 // FUNCTOR
 // Apply a function to any value parsed.
