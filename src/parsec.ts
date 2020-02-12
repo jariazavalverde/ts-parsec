@@ -32,12 +32,28 @@ Position.prototype.updateChar = function(char: string): Position {
 export interface ParseError {
 	position: Position
 	messages: string[]
+	merge: (err: ParseError) => ParseError
 };
 
 export function ParseError(position: Position, messages?: string[]) {
 	this.position = position;
 	this.messages = messages;
 };
+
+ParseError.prototype.merge = function(err: ParseError) {
+	if(err.messages.length === 0 && this.messages.length !== 0)
+		return this;
+	else if(this.messages.length === 0 && err.messages.length !== 0)
+		return err;
+	else {
+		if(this.position > err.position)
+			return this;
+		else if(err.position > this.position)
+			return err;
+		else
+			return new ParseError(this.position, this.messages.concat(err.messages));
+	}
+}
 
 
 
@@ -129,6 +145,7 @@ export interface Parsec<U, A> {
 	unParser: Parser<U, A>
 	runParsec: (state: State<U>) => Consumed<Reply<U, A>>
 	runParser: (state: U, name: string, input: string) => ParseError | A
+	or: (parser: Parsec<U, A>) => Parsec<U, A>
 };
 
 export function Parsec<U, A>(unParser: Parser<U, A>) {
@@ -147,6 +164,17 @@ Parsec.prototype.runParser = function<U, A>(state: U, name: string, input: strin
 	let res: Consumed<Reply<U, A>> = this.runParsec(new State(input, Position.init(name), state));
 	let r: Reply<U, A> = res.value;
 	return r.isOk() ? r.parsed : r.parseError;
+};
+
+Parsec.prototype.or = function<U, A>(parser: Parsec<U, A>): Parsec<U, A> {
+	return new Parsec((s: State<U>, cok, cerr, eok, eerr) => {
+		let meerr = ((err: ParseError) => {
+			let neok = (y: A, s: State<U>, err2: ParseError) => eok(y, s, err.merge(err2));
+			let neerr = (err2: ParseError) => eerr(err.merge(err2));
+			return parser.unParser(s, cok, cerr, neok, neerr);
+		});
+		return this.unParser(s, cok, cerr, eok, meerr);
+	});
 };
 
 
