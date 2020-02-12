@@ -29,32 +29,32 @@ export interface ParseError {
 
 /** State */
 
-export interface State<S, U> {
-	input: S
-	position: Position
+export interface State<U> {
 	user: U
+	position: Position
+	input: string
 };
 
-export function State<S, U>(input: S, position: Position, user: U) {
+export function State<U>(user: U, position: Position, input: string) {
+	this.user = user;
 	this.input = input;
 	this.position = position;
-	this.user = user;
 }
 
 
 
 /** Reply */
 
-export interface Reply<S, U, A> {
+export interface Reply<U, A> {
 	success: boolean
 	parsed: A
-	state: State<S, U>
+	state: State<U>
 	parseError: ParseError
 	isOk: () => boolean
 	isError: () => boolean
 };
 
-export function Reply<S, U, A>(success: boolean, parsed: A, state: State<S, U>, parseError: ParseError) {
+export function Reply<U, A>(success: boolean, parsed: A, state: State<U>, parseError: ParseError) {
 	this.success = success;
 	this.parsed = parsed;
 	this.state = state;
@@ -69,11 +69,11 @@ Reply.prototype.isError = function(): boolean {
 	return !this.success;
 };
 
-Reply.Ok = function<S, U, A>(parsed: A, state: State<S, U>, parseError: ParseError): Reply<S, U, A> {
+Reply.Ok = function<U, A>(parsed: A, state: State<U>, parseError: ParseError): Reply<U, A> {
 	return new Reply(true, parsed, state, parseError);
 };
 
-Reply.Error = function<S, U, A>(parseError: ParseError): Reply<S, U, A> {
+Reply.Error = function<U, A>(parseError: ParseError): Reply<U, A> {
 	return new Reply(false, undefined, undefined, parseError);
 };
 
@@ -103,34 +103,34 @@ Consumed.Empty = function<A>(value: A): Consumed<A> {
 
 /** Parsec */
 
-type Parser<S, U, A> = <B>(
-	state: State<S, U>,
-	cok: (val: A, state: State<S, U>, error: ParseError) => B,
+type Parser<U, A> = <B>(
+	state: State<U>,
+	cok: (val: A, state: State<U>, error: ParseError) => B,
 	cerr: (error: ParseError) => B,
-	eok: (val: A, state: State<S, U>, error: ParseError) => B,
+	eok: (val: A, state: State<U>, error: ParseError) => B,
 	eerr: (error: ParseError) => B
 ) => B;
 
-export interface Parsec<S, U, A> {
-	unParser: Parser<S, U, A>
-	runParsec: (state: State<S, U>) => Consumed<Reply<S, U, A>>
-	runParser: (state: U, filePath: string, input: S) => ParseError | A
+export interface Parsec<U, A> {
+	unParser: Parser<U, A>
+	runParsec: (state: State<U>) => Consumed<Reply<U, A>>
+	runParser: (state: U, name: string, input: string) => ParseError | A
 };
 
-export function Parsec<S, U, A>(unParser: Parser<S, U, A>) {
+export function Parsec<U, A>(unParser: Parser<U, A>) {
 	this.unParser = unParser;
 }
 
-Parsec.prototype.runParsec = function<S, U, A>(state: State<S, U>): Consumed<Reply<S, U, A>> {
-	let cok = (a: A, s: State<S, U>, err: ParseError) => Consumed.Consumed(Reply.Ok(a, s, err));
-	let cerr = (err: ParseError) => <Consumed<Reply<S, U, A>>> Consumed.Consumed(Reply.Error(err));
-	let eok = (a: A, s: State<S, U>, err: ParseError) => Consumed.Empty(Reply.Ok(a, s, err));
-	let eerr = (err: ParseError) => <Consumed<Reply<S, U, A>>> Consumed.Empty(Reply.Error(err));
+Parsec.prototype.runParsec = function<U, A>(state: State<U>): Consumed<Reply<U, A>> {
+	let cok = (a: A, s: State<U>, err: ParseError) => Consumed.Consumed(Reply.Ok(a, s, err));
+	let cerr = (err: ParseError) => <Consumed<Reply<U, A>>> Consumed.Consumed(Reply.Error(err));
+	let eok = (a: A, s: State<U>, err: ParseError) => Consumed.Empty(Reply.Ok(a, s, err));
+	let eerr = (err: ParseError) => <Consumed<Reply<U, A>>> Consumed.Empty(Reply.Error(err));
 	return this.unParser(state, cok, cerr, eok, eerr);
 };
 
-Parsec.prototype.runParser = function<S, U, A>(state: U, name: string, input: S): ParseError | A {
-	let res: Consumed<Reply<S, U, A>> = this.runParsec(new State(state, Position.init(name), input));
-	let r: Reply<S, U, A> = res.value;
+Parsec.prototype.runParser = function<U, A>(state: U, name: string, input: string): ParseError | A {
+	let res: Consumed<Reply<U, A>> = this.runParsec(new State(state, Position.init(name), input));
+	let r: Reply<U, A> = res.value;
 	return r.isOk() ? r.parsed : r.parseError;
 };
