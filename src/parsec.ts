@@ -4,6 +4,7 @@ export interface Position {
 	name: string
 	line: number
 	column: number
+	updateChar: (char: string) => Position
 };
 
 export function Position(name: string, line: number, column: number) {
@@ -14,6 +15,14 @@ export function Position(name: string, line: number, column: number) {
 
 Position.init = function(name: string) {
 	return new Position(name, 1, 1);
+};
+
+Position.prototype.updateChar = function(char: string): Position {
+	switch(char) {
+		case "\n": return new Position(this.name, this.line+1, 1);
+		case "\t": return new Position(this.name, this.line, this.column + 8 - ((this.column-1) % 8));
+		default: return new Position(this.name, this.line, this.column+1);
+	}
 };
 
 
@@ -41,9 +50,9 @@ export interface State<U> {
 };
 
 export function State<U>(input: string, position: Position, user: U) {
-	this.user = user;
 	this.input = input;
 	this.position = position;
+	this.user = user;
 }
 
 
@@ -146,21 +155,20 @@ Parsec.prototype.runParser = function<U, A>(state: U, name: string, input: strin
 
 export const Token: any = {};
 
-Token.token = function<U, A>(showToken: (t: string) => string, tokpos: (t: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
+Token.token = function<U, A>(tokpos: (t: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
 	let nextpos = (_, tok, ts) => {
 		if(ts.length === 0)
 			return tokpos(tok);
 		return tokpos(ts[0]);
 	};
-	return Token.tokenPrim(showToken, nextpos, test);
+	return Token.tokenPrim(nextpos, test);
 };
 
-Token.tokenPrim = function<U, A>(showToken: (t: string) => string, nextpos: (pos: Position, t: string, s: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
-	return Token.tokenPrimEx(showToken, nextpos, undefined, test);
+Token.tokenPrim = function<U, A>(nextpos: (pos: Position, t: string, s: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
+	return Token.tokenPrimEx(nextpos, undefined, test);
 }
 
 Token.tokenPrimEx = function<U, A>(
-	showToken: (t: string) => string,
 	nextpos: (pos: Position, t: string, s: string) => Position,
 	nextState: ((pos: Position, t: string, s: string, u: U) => U) | undefined,
 	test: (t: string) => A | undefined): Parsec<U, A>
@@ -201,4 +209,17 @@ Token.tokenPrimEx = function<U, A>(
 			}
 		});
 	}
-}
+};
+
+
+
+/** Char */
+
+export const Char: any = {};
+
+Char.satisfy = function<U>(predicate: (char: string) => boolean): Parsec<U, string> {
+	return Token.tokenPrim(
+		(pos: Position, c: string, _cs: string) => pos.updateChar(c),
+		(c: string) => predicate(c) ? c : undefined
+	);
+};
