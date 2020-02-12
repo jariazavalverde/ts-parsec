@@ -22,7 +22,12 @@ Position.init = function(name: string) {
 
 export interface ParseError {
 	position: Position
-	messages: [string]
+	messages: string[]
+};
+
+export function ParseError(position: Position, messages?: string[]) {
+	this.position = position;
+	this.messages = messages;
 };
 
 
@@ -35,7 +40,7 @@ export interface State<U> {
 	input: string
 };
 
-export function State<U>(user: U, position: Position, input: string) {
+export function State<U>(input: string, position: Position, user: U) {
 	this.user = user;
 	this.input = input;
 	this.position = position;
@@ -130,7 +135,70 @@ Parsec.prototype.runParsec = function<U, A>(state: State<U>): Consumed<Reply<U, 
 };
 
 Parsec.prototype.runParser = function<U, A>(state: U, name: string, input: string): ParseError | A {
-	let res: Consumed<Reply<U, A>> = this.runParsec(new State(state, Position.init(name), input));
+	let res: Consumed<Reply<U, A>> = this.runParsec(new State(input, Position.init(name), state));
 	let r: Reply<U, A> = res.value;
 	return r.isOk() ? r.parsed : r.parseError;
 };
+
+
+
+/** Token */
+
+export const Token: any = {};
+
+Token.token = function<U, A>(showToken: (t: string) => string, tokpos: (t: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
+	let nextpos = (_, tok, ts) => {
+		if(ts.length === 0)
+			return tokpos(tok);
+		return tokpos(ts[0]);
+	};
+	return Token.tokenPrim(showToken, nextpos, test);
+};
+
+Token.tokenPrim = function<U, A>(showToken: (t: string) => string, nextpos: (pos: Position, t: string, s: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
+	return Token.tokenPrimEx(showToken, nextpos, undefined, test);
+}
+
+Token.tokenPrimEx = function<U, A>(
+	showToken: (t: string) => string,
+	nextpos: (pos: Position, t: string, s: string) => Position,
+	nextState: ((pos: Position, t: string, s: string, u: U) => U) | undefined,
+	test: (t: string) => A | undefined): Parsec<U, A>
+{
+	if(nextState === undefined) {
+		return new Parsec((state: State<U>, cok, _cerr, _eok, eerr) => {
+			if(state.input.length === 0) {
+				return eerr(new ParseError(state.position, ["unexpected error"]));
+			} else {
+				let c = state.input[0];
+				let cs = state.input.substr(1);
+				let x = test(state.input[0]);
+				if(x !== undefined) {
+					let newpos = nextpos(state.position, c, cs);
+					let newstate = new State(cs, newpos, state.user);
+					return cok(x, newstate, new ParseError(newpos, ["unknown error"]));
+				} else {
+					return eerr(new ParseError(state.position, [c]));
+				}
+			}
+		});
+	} else {
+		return new Parsec((state: State<U>, cok, _cerr, _eok, eerr) => {
+			if(state.input.length === 0) {
+				return eerr(new ParseError(state.position, ["unexpected error"]));
+			} else {
+				let c = state.input[0];
+				let cs = state.input.substr(1);
+				let x = test(state.input[0]);
+				if(x !== undefined) {
+					let newpos = nextpos(state.position, c, cs);
+					let newUser = nextState(state.position, c, cs, state.user);
+					let newstate = new State(cs, newpos, newUser);
+					return cok(x, newstate, new ParseError(newpos, ["unknown error"]));
+				} else {
+					return eerr(new ParseError(state.position, [c]));
+				}
+			}
+		});
+	}
+}
