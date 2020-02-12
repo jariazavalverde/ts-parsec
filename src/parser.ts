@@ -27,24 +27,27 @@ Parser.prototype.set = function<A>(parser: Parser<A>) {
 	this.run = parser.run;
 };
 
-Parser.prototype.to = function<A>(label: string) {
-	this.run = ((input: string) => this.run(input));
-	this.label = label;
+Parser.prototype.to = function<A>(label: string): Parser<A> {
+	let parser = new Parser(input => this.run(input));
+	parser.label = label;
+	return parser;
 };
 
-Parser.make = function(parsers: Array<((val: any[]) => Parser<any>) | Parser<any>>): Parser<any> {
+Parser.chain = function(parsers: Array<((val: any) => Parser<any>) | Parser<any>>): Parser<any> {
 	return new Parser(input => {
-		let args = [];
-		let parser: Parser<any> = typeof parsers[0] === "function" ? (<(val: any[]) => Parser<any>><unknown>parsers[0])(args) : <Parser<any>><unknown>parsers[0];
-		let xs: Array<[[any, string], Array<any>]> = parser.run(input).map(x => [x, args.slice()]);
-		let ys: Array<[[any, string], Array<any>]>;
+		let args = {};
+		let parser: Parser<any> = typeof parsers[0] === "function" ? (<(val: any) => Parser<any>><unknown>parsers[0])(args) : <Parser<any>><unknown>parsers[0];
+		let xs: Array<[[any, string], any]> = parser.run(input).map(x => [x, {}]);
+		let ys: Array<[[any, string], any]>;
 		for(let i = 1; i < parsers.length; i++) {
 			ys = [];
 			for(let j = 0; j < xs.length; j++) {
 				args = xs[j][1];
 				args[i-1] = xs[j][0][0];
-				parser = typeof parsers[i] === "function" ? (<(val: any[]) => Parser<any>><unknown>parsers[i])(args) : <Parser<any>><unknown>parsers[i];
-				ys = ys.concat(parser.run(xs[j][0][1]).map(x => [x, args.slice()]));
+				if(parser.label !== undefined)
+					args[parser.label] = xs[j][0][0];
+				parser = typeof parsers[i] === "function" ? (<(val: any) => Parser<any>><unknown>parsers[i])(args) : <Parser<any>><unknown>parsers[i];
+				ys = ys.concat(parser.run(xs[j][0][1]).map(x => [x, Object.assign({}, args)]));
 			}
 			xs = ys;
 		}

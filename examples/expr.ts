@@ -1,5 +1,5 @@
 import {Parser} from "../src/parser";
-const {pure, empty, make, liftA2} = Parser;
+const {pure, empty, chain, liftA2} = Parser;
 const {char, digit} = Parser.char;
 const {between} = Parser.combinator;
 const {curry2} = Parser.utils;
@@ -29,11 +29,11 @@ const mul = (x: number, y: number): number => x*y;
 factor.set(term.bind(a => char('*').then(factor).bind(b => pure(a*b))).or(term));
 factor.set(pure(curry2(mul)).ap(term).ap(char('*').then(factor)).or(term));
 factor.set(liftA2(curry2(mul), term, char('*').then(factor)).or(term));
-factor.set(make([
-	term,
+factor.set(chain([
+	term.to("x"),
 	char('*'),
-	factor,
-	x => pure(x[0] * x[2])
+	factor.to("y"),
+	args => pure(args.x * args.y)
 ]).or(term));
 
 // <expr> -> <factor> "+" <expr> | <factor>
