@@ -91,20 +91,20 @@ export function Reply<U, A>(success: boolean, parsed: A, state: State<U>, parseE
 	this.parseError = parseError;
 };
 
-Reply.prototype.isOk = function(): boolean {
-	return this.success;
-};
-
-Reply.prototype.isError = function(): boolean {
-	return !this.success;
-};
-
 Reply.Ok = function<U, A>(parsed: A, state: State<U>, parseError: ParseError): Reply<U, A> {
 	return new Reply(true, parsed, state, parseError);
 };
 
 Reply.Error = function<U, A>(parseError: ParseError): Reply<U, A> {
 	return new Reply(false, undefined, undefined, parseError);
+};
+
+Reply.prototype.isOk = function(): boolean {
+	return this.success;
+};
+
+Reply.prototype.isError = function(): boolean {
+	return !this.success;
 };
 
 
@@ -133,18 +133,22 @@ Consumed.Empty = function<A>(value: A): Consumed<A> {
 
 /** Parsec */
 
-type Parser<U, A> = <B>(
+type Parser<U, A> = (
 	state: State<U>,
-	cok: (val: A, state: State<U>, error: ParseError) => B,
-	cerr: (error: ParseError) => B,
-	eok: (val: A, state: State<U>, error: ParseError) => B,
-	eerr: (error: ParseError) => B
-) => B;
+	cok: (val: A, state: State<U>, error: ParseError) => Consumed<Reply<U, A>>,
+	cerr: (error: ParseError) => Consumed<Reply<U, A>>,
+	eok: (val: A, state: State<U>, error: ParseError) => Consumed<Reply<U, A>>,
+	eerr: (error: ParseError) => Consumed<Reply<U, A>>
+) => Consumed<Reply<U, A>>;
 
 export interface Parsec<U, A> {
 	unParser: Parser<U, A>
 	runParsec: (state: State<U>) => Consumed<Reply<U, A>>
 	runParser: (state: U, name: string, input: string) => ParseError | A
+	// Functor
+	map: <B>(fn: (a: A) => B) => Parsec<U, B>
+	replace: <B>(val: B) => Parsec<U, B>
+	// Alternative
 	or: (parser: Parsec<U, A>) => Parsec<U, A>
 };
 
@@ -166,8 +170,35 @@ Parsec.prototype.runParser = function<U, A>(state: U, name: string, input: strin
 	return r.isOk() ? r.parsed : r.parseError;
 };
 
+// Functor
+
+// Applies a function to any value parsed.
+// (fmap)
+Parsec.prototype.map = function<U, A, B>(fn: (a: A) => B): Parsec<U, B> {
+	return new Parsec((s: State<U>, cok: (val: B, state: State<U>, error: ParseError) => Consumed<Reply<U, B>>, cerr, eok, eerr) =>
+		this.unParser(
+			s,
+			(x: A, s: State<U>, e: ParseError) => cok(fn(x), s, e),
+			cerr,
+			(x: A, s: State<U>, e: ParseError) => eok(fn(x), s, e),
+			eerr
+		)
+	);
+};
+
+// Replaces all locations in any value parsed with the same value.
+// (<$)
+Parsec.prototype.replace = function<U, A, B>(val: B): Parsec<U, B> {
+	return this.map((_a: A) => val);
+};
+
+// Alternative
+
+// If the first parser doesn't produce any value, returns the value
+// produced by the second.
+// (<|>)
 Parsec.prototype.or = function<U, A>(parser: Parsec<U, A>): Parsec<U, A> {
-	return new Parsec((s: State<U>, cok, cerr, eok, eerr) => {
+	return new Parsec((s: State<U>, cok: (val: A, state: State<U>, error: ParseError) => Consumed<Reply<U, A>>, cerr, eok, eerr) => {
 		let meerr = ((err: ParseError) => {
 			let neok = (y: A, s: State<U>, err2: ParseError) => eok(y, s, err.merge(err2));
 			let neerr = (err2: ParseError) => eerr(err.merge(err2));
@@ -184,7 +215,7 @@ Parsec.prototype.or = function<U, A>(parser: Parsec<U, A>): Parsec<U, A> {
 export const Token: any = {};
 
 Token.token = function<U, A>(tokpos: (t: string) => Position, test: (t: string) => A | undefined): Parsec<U, A> {
-	let nextpos = (_, tok, ts) => {
+	let nextpos = (_pos: Position, tok: string, ts: string) => {
 		if(ts.length === 0)
 			return tokpos(tok);
 		return tokpos(ts[0]);
@@ -202,7 +233,7 @@ Token.tokenPrimEx = function<U, A>(
 	test: (t: string) => A | undefined): Parsec<U, A>
 {
 	if(nextState === undefined) {
-		return new Parsec((state: State<U>, cok, _cerr, _eok, eerr) => {
+		return new Parsec((state: State<U>, cok: (val: A, state: State<U>, error: ParseError) => Consumed<Reply<U, A>>, _cerr, _eok, eerr) => {
 			if(state.input.length === 0) {
 				return eerr(new ParseError(state.position, ["unexpected error"]));
 			} else {
@@ -219,7 +250,7 @@ Token.tokenPrimEx = function<U, A>(
 			}
 		});
 	} else {
-		return new Parsec((state: State<U>, cok, _cerr, _eok, eerr) => {
+		return new Parsec((state: State<U>, cok: (val: A, state: State<U>, error: ParseError) => Consumed<Reply<U, A>>, _cerr, _eok, eerr) => {
 			if(state.input.length === 0) {
 				return eerr(new ParseError(state.position, ["unexpected error"]));
 			} else {
