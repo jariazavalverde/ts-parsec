@@ -148,6 +148,10 @@ export interface Parsec<U, A> {
 	// Functor
 	map: <B>(fn: (a: A) => B) => Parsec<U, B>
 	replace: <B>(val: B) => Parsec<U, B>
+	// Applicative
+	ap: <A, B>(this: Parsec<U, (a: A) => B>, parser: Parsec<U, A>) => Parsec<U, B>
+	// Monad
+	bind: <B>(fn: (val: A) => Parsec<U, B>) => Parsec<U, B>
 	// Alternative
 	or: (parser: Parsec<U, A>) => Parsec<U, A>
 };
@@ -205,6 +209,41 @@ Parsec.prototype.or = function<U, A>(parser: Parsec<U, A>): Parsec<U, A> {
 			return parser.unParser(s, cok, cerr, neok, neerr);
 		});
 		return this.unParser(s, cok, cerr, eok, meerr);
+	});
+};
+
+// Applicative
+
+// Injects a value into the parser.
+// (pure, return)
+Parsec.pure = function<U, A>(val: A): Parsec<U, A> {
+	return new Parsec((s, _cok, _cerr, eok, _eerr) => eok(val, s, new ParseError(s.position, ["unknown error"])));
+};
+
+// Sequential application.
+// (<*>)
+Parsec.prototype.ap = function<U, A, B>(this: Parsec<U, (a: A) => B>, parser: Parsec<U, A>): Parsec<U, B> {
+	return this.bind(f => parser.bind(x => Parsec.pure(f(x))));
+};
+
+// Monad
+
+// Sequentially composes two parsers, passing any value produced
+// by the first as an argument to the second.
+// (>>=)
+Parsec.prototype.bind = function<U, A, B>(fn: (val: A) => Parsec<U, B>): Parsec<U, B> {
+	return new Parsec((s: State<U>, cok: (val: B, state: State<U>, error: ParseError) => Consumed<Reply<U, B>>, cerr, eok, eerr) => {
+		let mcok = (x: A, s: State<U>, err: ParseError) => {
+			let peok = (x: B, s: State<U>, err2: ParseError) => cok(x, s, err.merge(err2));
+			let peerr = (err2: ParseError) => cerr(err.merge(err2));
+			return fn(x).unParser(s, cok, cerr, peok, peerr);
+		};
+		let meok = (x: A, s: State<U>, err: ParseError) => {
+			let peok = (x: B, s: State<U>, err2: ParseError) => eok(x, s, err.merge(err2));
+			let peerr = (err2: ParseError) => eerr(err.merge(err2));
+			return fn(x).unParser(s, cok, cerr, peok, peerr);
+		};
+		return this.unParser(s, mcok, cerr, meok, eerr);
 	});
 };
 
@@ -288,3 +327,9 @@ Char.satisfy = function<U>(predicate: (char: string) => boolean): Parsec<U, stri
 // Parses any character.
 // Returns the parsed character.
 Char.anyChar = Char.satisfy(_val => true);
+
+// Parses a single character.
+// Returns the parsed character.
+Char.char = function<U>(c: string): Parsec<U, string> {
+	return Char.satisfy((val: string) => val === c);
+};
