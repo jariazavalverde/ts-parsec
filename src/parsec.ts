@@ -133,7 +133,7 @@ Consumed.Empty = function<A>(value: A): Consumed<A> {
 
 /** Parsec */
 
-type Parser<U, A> = (
+type unParser<U, A> = (
 	state: State<U>,
 	cok: (val: A, state: State<U>, error: ParseError) => Consumed<Reply<U, A>>,
 	cerr: (error: ParseError) => Consumed<Reply<U, A>>,
@@ -142,7 +142,7 @@ type Parser<U, A> = (
 ) => Consumed<Reply<U, A>>;
 
 export interface Parsec<U, A> {
-	unParser: Parser<U, A>
+	unParser: unParser<U, A>
 	runParsec: (state: State<U>) => Consumed<Reply<U, A>>
 	runParser: (state: U, name: string, input: string) => ParseError | A
 	// Functor
@@ -152,7 +152,7 @@ export interface Parsec<U, A> {
 	or: (parser: Parsec<U, A>) => Parsec<U, A>
 };
 
-export function Parsec<U, A>(unParser: Parser<U, A>) {
+export function Parsec<U, A>(unParser: unParser<U, A>) {
 	this.unParser = unParser;
 }
 
@@ -187,7 +187,7 @@ Parsec.prototype.map = function<U, A, B>(fn: (a: A) => B): Parsec<U, B> {
 };
 
 // Replaces all locations in any value parsed with the same value.
-// (<$)
+// ($>)
 Parsec.prototype.replace = function<U, A, B>(val: B): Parsec<U, B> {
 	return this.map((_a: A) => val);
 };
@@ -276,9 +276,15 @@ Token.tokenPrimEx = function<U, A>(
 
 export const Char: any = {};
 
+// Succeeds for any character for which the supplied function returns true.
+// Returns the parsed character.
 Char.satisfy = function<U>(predicate: (char: string) => boolean): Parsec<U, string> {
 	return Token.tokenPrim(
 		(pos: Position, c: string, _cs: string) => pos.updateChar(c),
 		(c: string) => predicate(c) ? c : undefined
 	);
 };
+
+// Parses any character.
+// Returns the parsed character.
+Char.anyChar = Char.satisfy(_val => true);
